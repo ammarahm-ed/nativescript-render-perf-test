@@ -26,8 +26,8 @@ function benchmark(
       container[prop] = containerProps[prop];
     }
     setTimeout(() => {
-      console.log("Render test began");
-      console.time("Render test result");
+      console.log("Render benchmark start");
+      console.time("Render benchmark result");
       for (let i = 0; i < 1000; i++) {
         const view = new Child();
         for (const prop in childProps) {
@@ -35,8 +35,47 @@ function benchmark(
         }
         container.addChild(view);
       }
-      console.timeEnd("Render test result");
-      console.log("Render test end");
+      console.timeEnd("Render benchmark result");
+      console.log("Render benchmark end");
+      resolve(true);
+    }, 1000);
+  });
+}
+
+function benchmarkProp(
+  root: any,
+  Container: any,
+  containerProps: any,
+  Child: any,
+  childProps: any,
+  benchmarkProp: { [name: string]: any }
+) {
+  return new Promise((resolve, reject) => {
+    const container = new Container();
+    root.content = container;
+    //@ts-ignore
+    for (const prop in containerProps) {
+      container[prop] = containerProps[prop];
+    }
+    setTimeout(() => {
+      const views = [];
+      for (let i = 0; i < 1000; i++) {
+        const view = new Child();
+        for (const prop in childProps) {
+          view[prop] = childProps[prop];
+        }
+        (container as FlexboxLayout).addChild(view);
+        views.push(view);
+      }
+      console.log("Prop benchmark start");
+      console.time("Prop benchmark result");
+      for (let view of views) {
+        for (let prop in benchmarkProp) {
+          view[prop] = benchmarkProp[prop];
+        }
+      }
+      console.timeEnd("Prop benchmark result");
+      console.log("Prop benchmark end");
       resolve(true);
     }, 1000);
   });
@@ -50,23 +89,44 @@ Application.run({
     //@ts-ignore
     root.height = "100%";
 
-    benchmark(
-      root,
-      FlexboxLayout,
-      {
-        width: "100%",
-        flexDirection: "column",
-        alignItems: "flex-start",
-        justifyContent: "center",
-      },
-      StackLayout,
-      {
-        width: 100,
-        height: 100,
-        marginBottom: 10,
-        backgroundColor: "red",
-      }
-    );
+    setTimeout(async () => {
+      await benchmark(
+        root,
+        FlexboxLayout,
+        {
+          width: "100%",
+          flexDirection: "column",
+          alignItems: "flex-start",
+          justifyContent: "center",
+        },
+        StackLayout,
+        {
+          width: 100,
+          height: 100,
+          marginBottom: 10,
+        }
+      );
+
+      await benchmarkProp(
+        root,
+        FlexboxLayout,
+        {
+          width: "100%",
+          flexDirection: "column",
+          alignItems: "flex-start",
+          justifyContent: "center",
+        },
+        StackLayout,
+        {
+          width: 100,
+          height: 100,
+          marginBottom: 10,
+        },
+        {
+          backgroundColor: "red",
+        }
+      );
+    });
 
     return root;
   },
