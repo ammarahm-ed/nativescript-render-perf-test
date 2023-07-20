@@ -11,6 +11,27 @@ import {
   StackLayout,
 } from "@nativescript/core";
 
+//@ts-ignore
+global.setImmediate = setTimeout;
+//@ts-ignore
+global.clearImmediate = clearTimeout;
+//@ts-ignore
+global.performance = {
+  now() {
+    if (global.android) {
+      return java.lang.System.nanoTime() / 1000000;
+    } else {
+      return CACurrentMediaTime() * 1000;
+    }
+  },
+};
+global.process = {
+  //@ts-ignore
+  versions: {
+    node: "10.0",
+  },
+};
+
 function benchmark(
   root: any,
   Container: any,
@@ -19,6 +40,7 @@ function benchmark(
   childProps: any
 ) {
   return new Promise((resolve, reject) => {
+    const MARKER = `Rendering 1000 ${Child.name} in ${Container.name} took`;
     const container = new Container();
     root.content = container;
     //@ts-ignore
@@ -26,8 +48,7 @@ function benchmark(
       container[prop] = containerProps[prop];
     }
     setTimeout(() => {
-      console.log("Render benchmark start");
-      console.time("Render benchmark result");
+      console.time(MARKER);
       for (let i = 0; i < 1000; i++) {
         const view = new Child();
         for (const prop in childProps) {
@@ -35,8 +56,7 @@ function benchmark(
         }
         container.addChild(view);
       }
-      console.timeEnd("Render benchmark result");
-      console.log("Render benchmark end");
+      console.timeEnd(MARKER);
       resolve(true);
     }, 1000);
   });
@@ -67,15 +87,14 @@ function benchmarkProp(
         (container as FlexboxLayout).addChild(view);
         views.push(view);
       }
-      console.log("Prop benchmark start");
-      console.time("Prop benchmark result");
-      for (let view of views) {
-        for (let prop in benchmarkProp) {
+      for (let prop in benchmarkProp) {
+        const MARKER = `Setting ${prop} on ${Child.name} took`;
+        console.time(MARKER);
+        for (let view of views) {
           view[prop] = benchmarkProp[prop];
         }
+        console.timeEnd(MARKER);
       }
-      console.timeEnd("Prop benchmark result");
-      console.log("Prop benchmark end");
       resolve(true);
     }, 1000);
   });
@@ -92,7 +111,7 @@ Application.run({
     setTimeout(async () => {
       await benchmark(
         root,
-        FlexboxLayout,
+        StackLayout,
         {
           width: "100%",
           flexDirection: "column",
@@ -104,9 +123,9 @@ Application.run({
           width: 100,
           height: 100,
           marginBottom: 10,
+          backgroundColor: "red",
         }
       );
-
       await benchmarkProp(
         root,
         FlexboxLayout,
